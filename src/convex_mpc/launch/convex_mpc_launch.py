@@ -18,7 +18,13 @@ def generate_launch_description():
     #     "config",
     #     "convex_mpc_params.yaml"
     # )
-    convex_mpc_params_file = "/home/aipexws5/daniel/aipex-quadruped-baselines/src/convex_mpc/config/convex_mpc_params.yaml"
+    #convex_mpc_params_file = "/home/aipexws5/daniel/aipex-quadruped-baselines/src/convex_mpc/config/convex_mpc_params.yaml"
+    convex_mpc_params_file = os.path.join(
+        get_package_share_directory('convex_mpc'),
+        'config',
+        'convex_mpc_params.yaml'
+    )
+
     return LaunchDescription([
         Node(
             package='convex_mpc',
@@ -32,6 +38,21 @@ def generate_launch_description():
             name='joy_node',
             output='screen',   
         )
+        # 🔹 NEW: external reference generator node
+        Node(
+            package='convex_mpc',
+            executable='reference_trajectory_node',
+            name='reference_trajectory_node',
+            parameters=[
+                convex_mpc_params_file,  # gives it N_STATES, N_MPC, mpc_dt
+                {
+                    # override or set reference behavior here:
+                    'vx_ref': 0.3,   # forward speed [m/s]
+                    'vy_ref': 0.0,   # lateral speed [m/s]
+                    'wz_ref': 0.0,   # yaw rate [rad/s]
+                }
+            ]
+        ),
 
 
     ])

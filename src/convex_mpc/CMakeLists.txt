@@ -72,6 +72,9 @@ add_executable(convex_mpc_controller
   src/transforms.cpp
   src/gait_planner.cpp
 )
+add_executable(reference_trajectory_node
+  src/reference_trajectory_node.cpp
+)
 
 # add_executable(gait_planner
 #   src/gait_planner.cpp
@@ -97,6 +100,10 @@ target_link_libraries(convex_mpc_controller
   ${GUROBI_LIBRARY}
   pinocchio::pinocchio
 )
+target_include_directories(reference_trajectory_node PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${EIGEN3_INCLUDE_DIRS}
+)
 
 # target_include_directories(gait_planner PRIVATE
 #   ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -113,10 +120,15 @@ target_link_libraries(convex_mpc_controller
 
 ament_target_dependencies(convex_mpc_controller ${DEPENDENCY_LIST})
 # ament_target_dependencies(gait_planner ${DEPENDENCY_LIST})
+ament_target_dependencies(reference_trajectory_node
+  rclcpp
+  std_msgs
+)
 
 
 install(TARGETS
   convex_mpc_controller
+  reference_trajectory_node
   # gait_planner
   DESTINATION lib/${PROJECT_NAME}
 )
