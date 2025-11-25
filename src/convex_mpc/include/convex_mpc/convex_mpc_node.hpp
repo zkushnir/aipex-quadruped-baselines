@@ -70,6 +70,9 @@ class QuadConvexMPCNode : public rclcpp::Node
         // Publisher for joint torque commands
         rclcpp::Publisher<unitree_go::msg::LowCmd>::SharedPtr joint_torque_pub_;
         rclcpp::TimerBase::SharedPtr publish_joint_torque_timer_; // Rate to update x0 in MPC based on lowstate
+	
+	//publisher for x0
+	rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr x0_pub_;
 
         // Unitree sportmode vars
         rclcpp::Subscription<unitree_go::msg::SportModeState>::SharedPtr sport_mode_sub_;

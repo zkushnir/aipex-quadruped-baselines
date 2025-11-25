@@ -6,19 +6,7 @@ import os
 
 
 def generate_launch_description():
-    # convex_mpc_params_file = os.path.join(
-    #     get_package_share_directory('convex_mpc'),
-    #     'config',
-    #     'convex_mpc_params.yaml'
-    # )
-
-    # convex_mpc_params_file = os.path.join(
-    #     os.path.dirname(__file__),  
-    #     "..",
-    #     "config",
-    #     "convex_mpc_params.yaml"
-    # )
-    #convex_mpc_params_file = "/home/aipexws5/daniel/aipex-quadruped-baselines/src/convex_mpc/config/convex_mpc_params.yaml"
+    # Use the installed share directory to locate the params file
     convex_mpc_params_file = os.path.join(
         get_package_share_directory('convex_mpc'),
         'config',
@@ -26,19 +14,15 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        # MPC controller node
         Node(
             package='convex_mpc',
             executable='convex_mpc_controller',
             name='convex_mpc_controller',
-            parameters = [convex_mpc_params_file]
+            parameters=[convex_mpc_params_file],
         ),
-        Node(
-            package='joy',
-            executable='joy_node',
-            name='joy_node',
-            output='screen',   
-        )
-        # 🔹 NEW: external reference generator node
+
+        # External reference trajectory generator node
         Node(
             package='convex_mpc',
             executable='reference_trajectory_node',
@@ -46,13 +30,20 @@ def generate_launch_description():
             parameters=[
                 convex_mpc_params_file,  # gives it N_STATES, N_MPC, mpc_dt
                 {
-                    # override or set reference behavior here:
-                    'vx_ref': 0.3,   # forward speed [m/s]
-                    'vy_ref': 0.0,   # lateral speed [m/s]
-                    'wz_ref': 0.0,   # yaw rate [rad/s]
-                }
-            ]
+                    # override reference behavior here if you want
+                    'vx_ref': 0.3,
+                    'vy_ref': 0.0,
+                    'wz_ref': 0.0,
+                },
+            ],
         ),
 
-
+        # Joystick node (if you still want it running)
+        Node(
+            package='joy',
+            executable='joy_node',
+            name='joy_node',
+            output='screen',
+        ),
     ])
+

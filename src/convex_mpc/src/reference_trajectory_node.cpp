@@ -70,15 +70,20 @@ private:
         X_ref_flat.push_back(x[i]);
 
       // Simple “go straight” reference from current pose
-      double yaw = x[IDX_YAW];
+      // Direction of the predefined line in world frame (unit vector)
+	double dir_x = 1.0;  // along +X
+	double dir_y = 0.0;  // no Y
 
-      double world_vx =  vx_ref_ * std::cos(yaw) - vy_ref_ * std::sin(yaw);
-      double world_vy =  vx_ref_ * std::sin(yaw) + vy_ref_ * std::cos(yaw);
+	double world_speed = vx_ref_;      // use vx_ref_ as speed along the line
+	double world_vx = world_speed * dir_x;
+	double world_vy = world_speed * dir_y;
+
 
       x[IDX_X]  += world_vx * dt_;
       x[IDX_Y]  += world_vy * dt_;
       x[IDX_Z]   = x[IDX_Z];  // keep height (or set to fixed)
-      x[IDX_YAW] += wz_ref_ * dt_;
+      double desired_yaw = std::atan2(dir_y, dir_x);  // atan2(0, 1) = 0
+	x[IDX_YAW] = desired_yaw;
 
       x[IDX_VX] = world_vx;
       x[IDX_VY] = world_vy;

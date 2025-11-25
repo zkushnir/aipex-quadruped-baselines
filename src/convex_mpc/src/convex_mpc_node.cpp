@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <Eigen/Dense>
 
+#include "std_msgs/msg/float64_multi_array.hpp"
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
@@ -69,6 +70,9 @@ QuadConvexMPCNode::QuadConvexMPCNode()
 
     joint_torque_pub_ = this->create_publisher<unitree_go::msg::LowCmd>("/lowcmd", 10);
     publish_joint_torque_timer_ = this->create_wall_timer(std::chrono::milliseconds(JOINT_TORQUE_PUBLISH_RATE_MS), std::bind(&QuadConvexMPCNode::publish_cmd, this));
+	
+	//x0 publish
+	x0_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/x0", 10);
 
     // Create a lowstate subscriber to update mpc states
     low_state_sub_ = this->create_subscription<unitree_go::msg::LowState>(
@@ -345,7 +349,18 @@ void QuadConvexMPCNode::update_mpc_state()
         x0(0), x0(1), x0(2), x0(3), x0(4), x0(5), x0(6), x0(7), x0(8), x0(9), x0(10), x0(11), x0(12));
 
     this->convex_mpc->update_x0(x0); // Update rigid body pose state
-
+    // ✅ Publish x0 for other nodes
+    if (x0_pub_) {
+        std_msgs::msg::Float64MultiArray x0_msg;
+        x0_msg.data.resize(13);
+        for (int i = 0; i < 13; ++i) {
+            x0_msg.data[i] = x0(i);
+        }
+        x0_pub_->publish(x0_msg);
+    } else {
+        RCLCPP_ERROR(this->get_logger(), "x0_pub_ is null! Publisher not created correctly.");
+    }
+   
     // Convert joint_angles array to Eigen::VectorXd
     Eigen::Map<Eigen::VectorXf> joint_angles_eigen(joint_angles, 12);
     Vector<double, 12> joint_angles_double = joint_angles_eigen.cast<double>(); // Convert to double for MPC compatibility
