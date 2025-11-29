@@ -77,6 +77,16 @@ QuadConvexMPCNode::QuadConvexMPCNode()
         "lowstate", 1, std::bind(&QuadConvexMPCNode::low_state_callback, this, std::placeholders::_1)
     );
 
+    // Publish current x0 so another node can generate a reference
+    x0_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("/x0", 10);
+
+    // Subscribe to reference trajectory from external node
+    ref_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
+        "/reference_trajectory", 10,
+        std::bind(&QuadConvexMPCNode::refCallback, this, std::placeholders::_1)
+    );
+
+
     // Sport mode state subscriber
     // TODO: switch between subscriber callbacks based on measurement_mode
     sport_mode_sub_ = this->create_subscription<unitree_go::msg::SportModeState>(
