@@ -378,9 +378,35 @@ void QuadConvexMPCNode::update_mpc_state()
     Eigen::Map<Eigen::Matrix<float, 3, 4, Eigen::ColMajor>> mat_map(foot_pos, 3, 4);
     foot_positions = mat_map.cast<double>();
     this->convex_mpc->update_foot_positions(foot_positions); // Update foot positions in the body frame
+    
+    // --- NEW: publish x0 for the reference generator node ---
+    std_msgs::msg::Float64MultiArray x0_msg;
+    x0_msg.data.resize(mpc_params->N_STATES); // N_STATES is 13
+    for (int i = 0; i < mpc_params->N_STATES; ++i) {
+        x0_msg.data[i] = x0[i];
+    }
+    x0_pub_->publish(x0_msg);
 
+    // --- NEW: let external node set X_ref; optional fallback if none yet ---
+    if (!has_ref_) {
+        // Simple stand-still default: keep current pose and zero velocities
+        Eigen::Vector<double, 13> X_ref_single;
+        X_ref_single << theta[0], theta[1], theta[2],
+                        p[0], p[1], p[2],
+                        0.0, 0.0, 0.0,   // omega
+                        0.0, 0.0, 0.0,   // p_dot
+                        9.81;
+        VectorXd X_ref = VectorXd::Zero(mpc_params->N_MPC * mpc_params->N_STATES);
+        for (int k = 0; k < mpc_params->N_MPC; ++k) {
+            X_ref.segment<13>(k * 13) = X_ref_single;
+        }
+        convex_mpc->update_reference_trajectory(X_ref);
+        RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+                            "No external reference received; using stand-still reference.");
+    }
+    // If has_ref_==true, ConvexMPC already has the latest X_ref from refCallback()
 
-    // Update the reference trajectory
+    /* Update the reference trajectory
     // Reference state to repeat
     Eigen::Vector<double, 13> X_ref_single;
     X_ref_single << 0.000000, 0.000000, 0.000000, -0.025570, 0.000000, 0.312320, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 9.810000;
@@ -402,6 +428,27 @@ void QuadConvexMPCNode::update_mpc_state()
 
     X_ref = constrain_reference_trajectory_size(X_ref_joy, *mpc_params); // Truncate the reference trajectory passed to MPC if the joystick 
     convex_mpc->update_reference_trajectory(X_ref); // Update the reference trajectory in MPC
+    */
+}
+
+void QuadConvexMPCNode::refCallback(
+    const std_msgs::msg::Float64MultiArray::SharedPtr msg)
+{
+    int expected = mpc_params->N_MPC * mpc_params->N_STATES;
+    if (static_cast<int>(msg->data.size()) != expected) {
+        RCLCPP_ERROR(this->get_logger(),
+                     "Reference trajectory size mismatch: got %zu, expected %d",
+                     msg->data.size(), expected);
+        return;
+    }
+
+    X_ref_latest_.resize(expected);
+    for (int i = 0; i < expected; ++i) {
+        X_ref_latest_(i) = msg->data[i];
+    }
+
+    convex_mpc->update_reference_trajectory(X_ref_latest_);
+    has_ref_ = true;
 }
 
 
