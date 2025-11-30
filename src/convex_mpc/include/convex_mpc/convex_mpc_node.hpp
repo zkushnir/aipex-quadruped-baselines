@@ -22,6 +22,8 @@
 #include "convex_mpc/gait_planner.hpp"
 #include "convex_mpc/quad_params.hpp"
 
+#include "std_msgs/msg/float64_multi_array.hpp"
+
 using namespace std;
 using namespace Eigen;
 
@@ -49,6 +51,7 @@ class QuadConvexMPCNode : public rclcpp::Node
     public:
         QuadConvexMPCNode();
         explicit QuadConvexMPCNode(const rclcpp::NodeOptions & options);
+        void refCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg);
     private:
         std::unique_ptr<ConvexMPC> convex_mpc;
         std::unique_ptr<MPCParams> mpc_params; // Pointer to MPC parameters
@@ -73,7 +76,16 @@ class QuadConvexMPCNode : public rclcpp::Node
 	
 	//publisher for x0
 	rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr x0_pub_;
+	
+	// NEW: subscription to external reference trajectory
+	  rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr ref_sub_;
 
+	  // NEW: flag to indicate we have received at least one reference
+	  bool has_ref_{false};
+
+	  // OPTIONAL but useful: store the last received reference as an Eigen vector
+	  Eigen::VectorXd ref_traj_vec_;
+	  
         // Unitree sportmode vars
         rclcpp::Subscription<unitree_go::msg::SportModeState>::SharedPtr sport_mode_sub_;
         float foot_pos[12];

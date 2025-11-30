@@ -2,6 +2,7 @@
 #include <vector>
 #include <cmath>
 #include <string>
+#include <algorithm>  // for std::min, std::max
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
@@ -27,10 +28,9 @@ public:
     this->declare_parameter<double>("wz_ref", 0.0);   // rad/s yaw
 
     // Trajectory pattern parameters
-
-    this->declare_parameter<std::string>("trajectory_type", "square");  // "straight", "circle", "square"
-    this->declare_parameter<double>("circle_radius", 1.0);  // meters
-    this->declare_parameter<double>("square_side_length", 2.0);  // meters
+    this->declare_parameter<std::string>("trajectory_type", "circle");  // "straight", "circle", "square"
+    this->declare_parameter<double>("circle_radius", 1.0);              // meters
+    this->declare_parameter<double>("square_side_length", 2.0);         // meters
 
     N_STATES_ = this->get_parameter("N_STATES").as_int();
     N_MPC_    = this->get_parameter("N_MPC").as_int();
@@ -93,7 +93,7 @@ private:
       double initial_yaw = current_x0[IDX_YAW];
       double initial_x = current_x0[IDX_X];
       double initial_y = current_x0[IDX_Y];
-      
+
       // Store circle center based on initial position
       circle_center_x_ = initial_x - std::sin(initial_yaw) * circle_radius_;
       circle_center_y_ = initial_y + std::cos(initial_yaw) * circle_radius_;
@@ -147,7 +147,7 @@ private:
         generateStraightTrajectory(X_ref_flat, x, current_x, current_y, current_z, current_yaw);
         break;
       case TrajectoryType::CIRCLE:
-        generateCircleTrajectory(X_ref_flat, x, current_x, current_y, current_z, current_yaw);
+        generateCircleTrajectory(X_ref_flat, x, current_x, current_y, current_z);
         break;
       case TrajectoryType::SQUARE:
         generateSquareTrajectory(X_ref_flat, x, current_x, current_y, current_z, current_yaw);
@@ -162,15 +162,14 @@ private:
                 msg.data.size(), N_MPC_, N_STATES_);
   }
 
-
   void generateStraightTrajectory(std::vector<double>& X_ref_flat, const std::vector<double>& x,
-                                   double current_x, double current_y, double current_z, double current_yaw)
+                                  double current_x, double current_y, double current_z, double current_yaw)
   {
-    const int IDX_ROLL   = 0;
-    const int IDX_PITCH  = 1;
+    const int IDX_ROLL    = 0;
+    const int IDX_PITCH   = 1;
     const int IDX_OMEGA_X = 6;
     const int IDX_OMEGA_Y = 7;
-    const int IDX_G      = 12;
+    const int IDX_G       = 12;
 
     for (int k = 1; k <= N_MPC_; ++k) {
       double t_k = k * dt_;
@@ -196,13 +195,13 @@ private:
   }
 
   void generateCircleTrajectory(std::vector<double>& X_ref_flat, const std::vector<double>& x,
-                                 double current_x, double current_y, double current_z, double current_yaw)
+                                double current_x, double current_y, double current_z)
   {
-    const int IDX_ROLL   = 0;
-    const int IDX_PITCH  = 1;
+    const int IDX_ROLL    = 0;
+    const int IDX_PITCH   = 1;
     const int IDX_OMEGA_X = 6;
     const int IDX_OMEGA_Y = 7;
-    const int IDX_G      = 12;
+    const int IDX_G       = 12;
 
     // Calculate linear speed
     double linear_speed = std::sqrt(vx_ref_ * vx_ref_ + vy_ref_ * vy_ref_);
@@ -234,7 +233,7 @@ private:
       
       // Velocity is tangent to the circle (counter-clockwise)
       double world_vx = -linear_speed * std::sin(angle_k);
-      double world_vy = linear_speed * std::cos(angle_k);
+      double world_vy =  linear_speed * std::cos(angle_k);
       
       // Yaw rate for circular motion
       double wz_k = angular_velocity;
@@ -245,13 +244,13 @@ private:
   }
 
   void generateSquareTrajectory(std::vector<double>& X_ref_flat, const std::vector<double>& x,
-                                  double current_x, double current_y, double current_z, double current_yaw)
+                                double current_x, double current_y, double current_z, double current_yaw)
   {
-    const int IDX_ROLL   = 0;
-    const int IDX_PITCH  = 1;
+    const int IDX_ROLL    = 0;
+    const int IDX_PITCH   = 1;
     const int IDX_OMEGA_X = 6;
     const int IDX_OMEGA_Y = 7;
-    const int IDX_G      = 12;
+    const int IDX_G       = 12;
 
     // Calculate linear speed
     double linear_speed = std::sqrt(vx_ref_ * vx_ref_ + vy_ref_ * vy_ref_);
@@ -269,17 +268,17 @@ private:
     double perimeter = 4.0 * square_side_length_;
     double initial_distance = 0.0;
     
-    // Find which side of the square the current position is closest to
+    // Side definitions (perimeter traversal):
     // Side 0: bottom (y = corner_y, x from corner_x to corner_x + side_length) - moving right
     // Side 1: right (x = corner_x + side_length, y from corner_y to corner_y + side_length) - moving up
     // Side 2: top (y = corner_y + side_length, x from corner_x + side_length to corner_x) - moving left
     // Side 3: left (x = corner_x, y from corner_y + side_length to corner_y) - moving down
     
-    // Calculate distances to each side
+    // Distances to each side
     double dist_to_bottom = std::abs(dy);
-    double dist_to_right = std::abs(dx - square_side_length_);
-    double dist_to_top = std::abs(dy - square_side_length_);
-    double dist_to_left = std::abs(dx);
+    double dist_to_right  = std::abs(dx - square_side_length_);
+    double dist_to_top    = std::abs(dy - square_side_length_);
+    double dist_to_left   = std::abs(dx);
     
     // Find minimum distance
     double min_dist = std::min({dist_to_bottom, dist_to_right, dist_to_top, dist_to_left});
@@ -417,3 +416,4 @@ int main(int argc, char ** argv)
   rclcpp::shutdown();
   return 0;
 }
+

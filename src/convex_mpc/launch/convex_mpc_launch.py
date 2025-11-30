@@ -34,6 +34,10 @@ def generate_launch_description():
                     'vx_ref': 0.3,
                     'vy_ref': 0.0,
                     'wz_ref': 0.0,
+                    # NEW: control the pattern here
+            	'trajectory_type': 'circle,       # or 'square' or 'straight' or 'circle'
+            	'circle_radius': 1.0,
+            	'square_side_length': 2.0,
                 },
             ],
         ),

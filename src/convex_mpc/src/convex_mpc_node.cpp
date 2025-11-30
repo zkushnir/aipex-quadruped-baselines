@@ -82,10 +82,10 @@ QuadConvexMPCNode::QuadConvexMPCNode()
 
     // Subscribe to reference trajectory from external node
     ref_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
-        "/reference_trajectory", 10,
-        std::bind(&QuadConvexMPCNode::refCallback, this, std::placeholders::_1)
-    );
-
+    "/reference_trajectory",
+    10,
+    std::bind(&QuadConvexMPCNode::refCallback, this, std::placeholders::_1)
+  );
 
     // Sport mode state subscriber
     // TODO: switch between subscriber callbacks based on measurement_mode
@@ -432,23 +432,21 @@ void QuadConvexMPCNode::update_mpc_state()
 }
 
 void QuadConvexMPCNode::refCallback(
-    const std_msgs::msg::Float64MultiArray::SharedPtr msg)
+  const std_msgs::msg::Float64MultiArray::SharedPtr msg)
 {
-    int expected = mpc_params->N_MPC * mpc_params->N_STATES;
-    if (static_cast<int>(msg->data.size()) != expected) {
-        RCLCPP_ERROR(this->get_logger(),
-                     "Reference trajectory size mismatch: got %zu, expected %d",
-                     msg->data.size(), expected);
-        return;
-    }
+  // Convert the flat data[] into an Eigen::VectorXd for convenience
+  const std::size_t n = msg->data.size();
+  if (n == 0) {
+    RCLCPP_WARN(this->get_logger(), "Received empty reference_trajectory message");
+    has_ref_ = false;
+    return;
+  }
 
-    X_ref_latest_.resize(expected);
-    for (int i = 0; i < expected; ++i) {
-        X_ref_latest_(i) = msg->data[i];
-    }
+  ref_traj_vec_ = Eigen::VectorXd::Map(msg->data.data(), static_cast<Eigen::Index>(n));
+  has_ref_ = true;
 
-    convex_mpc->update_reference_trajectory(X_ref_latest_);
-    has_ref_ = true;
+  RCLCPP_INFO(this->get_logger(),
+              "Received reference trajectory of length %zu from /reference_trajectory", n);
 }
 
 

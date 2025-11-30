@@ -75,6 +75,9 @@ add_executable(convex_mpc_controller
 add_executable(reference_trajectory_node
   src/reference_trajectory_node.cpp
 )
+add_executable(mock_x0_node
+  src/mock_x0_node.cpp
+)
 
 # add_executable(gait_planner
 #   src/gait_planner.cpp
@@ -104,6 +107,10 @@ target_include_directories(reference_trajectory_node PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${EIGEN3_INCLUDE_DIRS}
 )
+target_include_directories(mock_x0_node PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${EIGEN3_INCLUDE_DIRS}
+)
 
 # target_include_directories(gait_planner PRIVATE
 #   ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -124,11 +131,16 @@ ament_target_dependencies(reference_trajectory_node
   rclcpp
   std_msgs
 )
+ament_target_dependencies(mock_x0_node
+  rclcpp
+  std_msgs
+)
 
 
 install(TARGETS
   convex_mpc_controller
   reference_trajectory_node
+  mock_x0_node
   # gait_planner
   DESTINATION lib/${PROJECT_NAME}
 )
